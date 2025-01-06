@@ -32,6 +32,15 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const crypto_wasm_ts_1 = require("@docknetwork/crypto-wasm-ts");
 const utils_1 = require("./utils");
@@ -98,22 +107,22 @@ const schema2 = {
     }
 };
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
-let outputPathInformations = "credentials/identity_information.csv";
-let headersInformations = [{ id: "id", title: "Personal Number" }, { id: "data", title: "JSON information" }, { id: "public", title: "Public Key" }, { id: "secret", title: "Secret Key" }];
-const csvWriterInformation = createCsvWriter({
-    path: outputPathInformations,
-    header: headersInformations
-});
-let rows_informations = [];
-let last_name_rows = (0, utils_1.get_column_table_from_csv)("stat/last_name.csv", 0);
-let origin_autority_rows = (0, utils_1.get_column_table_from_csv)("stat/EtatCommunes.csv", 5);
-let male_rows = (0, utils_1.get_column_table_from_csv)("stat/first_name.csv", 1, 6);
-let female_rows = (0, utils_1.get_column_table_from_csv)("stat/first_name.csv", 0, 6);
-let all_age_rows = (0, utils_1.get_row_table_from_csv)("stat/output_age.csv", 1);
-let male_age_rows = (0, utils_1.get_row_table_from_csv)("stat/output_age.csv", 2);
-let female_age_rows = (0, utils_1.get_row_table_from_csv)("stat/output_age.csv", 3);
-let age_rows = [all_age_rows.table, male_age_rows.table, female_age_rows.table];
-let total_values = [all_age_rows.total_value, male_age_rows.total_value, female_age_rows.total_value];
+// let outputPathInformations = "credentials/identity_information.csv"
+// let headersInformations = [{id: "id", title: "Personal Number"},{id: "data", title: "JSON information"}, {id: "public", title: "Public Key"}, {id: "secret", title: "Secret Key"}]
+// const csvWriterInformation = createCsvWriter({
+//     path: outputPathInformations,
+//     header: headersInformations
+// });
+// let rows_informations: { id: number; data: string; }[] = [];
+// let last_name_rows = get_column_table_from_csv("stat/last_name.csv", 0);
+// let origin_autority_rows = get_column_table_from_csv("stat/EtatCommunes.csv", 5);
+// let male_rows = get_column_table_from_csv("stat/first_name.csv", 1, 6)
+// let female_rows = get_column_table_from_csv("stat/first_name.csv", 0, 6)
+// let all_age_rows = get_row_table_from_csv("stat/output_age.csv", 1);
+// let male_age_rows = get_row_table_from_csv("stat/output_age.csv", 2);
+// let female_age_rows = get_row_table_from_csv("stat/output_age.csv", 3);
+// let age_rows: any[][] = [all_age_rows.table,male_age_rows.table,female_age_rows.table]
+// let total_values: any[] = [all_age_rows.total_value,male_age_rows.total_value,female_age_rows.total_value]
 // initializeWasm().then(() => {
 //   const params = BBSSignatureParams.generate(100, BBS_SIGNATURE_PARAMS_LABEL_BYTES);
 //   // Secret and public key of the issuer
@@ -200,40 +209,48 @@ let total_values = [all_age_rows.total_value, male_age_rows.total_value, female_
 //   })
 //   csvWriterCredentials.writeRecords(rows_credentials)
 // })
-let current_date = new Date("1-1-2025").getTime();
-let max_expiration_date = new Date("1-1-2035").getTime();
-(0, crypto_wasm_ts_1.initializeWasm)().then(() => {
+let keys = Object.keys(schema2.properties.credentialSubject.properties);
+//let current_date = new Date("1-1-2025").getTime()
+//let max_expiration_date = new Date("1-1-2035").getTime();
+(0, crypto_wasm_ts_1.initializeWasm)().then(() => __awaiter(void 0, void 0, void 0, function* () {
     const params = crypto_wasm_ts_1.BBSSignatureParams.generate(100, crypto_wasm_ts_1.BBS_SIGNATURE_PARAMS_LABEL_BYTES);
     // Secret and public key of the issuer
     const keypair = crypto_wasm_ts_1.BBSKeypair.generate(params, (0, utils_1.stringToBytes)("seed1"));
     const secretKey = keypair.secretKey;
     const publicKey = keypair.publicKey;
-    let outputPathProofs = "credentials/identity_proofs.csv";
-    let headersProofs = [{ id: "id", title: "Personal Number" }, { id: "cred_num", title: "Number of Holder Credential" }, { id: "proof_num", title: "Number of the proof" }, { id: "data", title: "JSON information" }];
-    const csvWriterProofs = createCsvWriter({
-        path: outputPathProofs,
-        header: headersProofs
-    });
-    let rows_proof = [];
+    let headersProofs = [{ id: "id", title: "Personal Number" }, { id: "cred_num", title: "Number of Holder Credential" }, { id: "proof_num", title: "Number of the proof" }, { id: "proof", title: "proof array" }];
+    let headerKeys = keys.map((x) => { return { id: x, title: x }; });
+    headersProofs = headersProofs.concat(headerKeys);
     //recovery of the informations
     const csvFilePath = path.resolve(__dirname, "credentials/identity_credentials.csv");
     const fileContent = fs.readFileSync(csvFilePath, { encoding: 'utf-8' });
-    let result = (0, sync_1.parse)(fileContent, { delimiter: ',', }).filter((row) => row[1] === '0').slice(0, 200);
-    result.forEach((row) => {
-        let verifiableCredential = crypto_wasm_ts_1.BBSCredential.fromJSON(JSON.parse(row[2]));
-        const presentationBuilder = new crypto_wasm_ts_1.PresentationBuilder();
-        presentationBuilder.addCredential(verifiableCredential, publicKey);
-        const boundCheckBppParams1 = new crypto_wasm_ts_1.BoundCheckBppParams((0, utils_1.stringToBytes)('Common Reference String')).decompress();
-        presentationBuilder.enforceBounds(0, 'credentialSubject.expirationDate', current_date, max_expiration_date, 'expirationCheck', boundCheckBppParams1);
-        rows_proof = [];
-        for (let j = 0; j < 1000; j++) {
-            const presentation2 = presentationBuilder.finalize();
-            console.log(row[0], row[1], j);
-            rows_proof.push({ id: row[0], cred_num: row[1], proof_num: j, data: JSON.stringify(presentation2.toJSON()) });
-        }
-    });
-    csvWriterProofs.writeRecords(rows_proof);
-});
+    let result = (0, sync_1.parse)(fileContent, { delimiter: ',', }).filter((row) => row[1] === '0').slice(1).slice(0, 10);
+    for (let t = 0; t < 2; t++) {
+        let outputPathProofs = `credentials/identity_proofs_${t}.csv`;
+        const csvWriterProofs = createCsvWriter({
+            path: outputPathProofs,
+            header: headersProofs
+        });
+        let selected_values = (0, utils_1.getRandomValuesFromArray)(keys, Math.floor(Math.random() * (keys.length + 1)));
+        let rows_proof = [];
+        result.forEach((row) => {
+            let verifiableCredential = crypto_wasm_ts_1.BBSCredential.fromJSON(JSON.parse(row[2]));
+            const obj = selected_values.reduce((o, key) => (Object.assign(Object.assign({}, o), { [key]: verifiableCredential.subject[key] })), {});
+            const presentationBuilder = new crypto_wasm_ts_1.PresentationBuilder();
+            presentationBuilder.addCredential(verifiableCredential, publicKey);
+            const boundCheckBppParams1 = new crypto_wasm_ts_1.BoundCheckBppParams((0, utils_1.stringToBytes)('Common Reference String')).decompress();
+            //presentationBuilder.enforceBounds(0, 'credentialSubject.expirationDate', current_date, max_expiration_date, 'expirationCheck', boundCheckBppParams1);
+            presentationBuilder.markAttributesRevealed(0, new Set(selected_values.map(x => "credentialSubject." + x)));
+            for (let j = 0; j < 10; j++) {
+                const presentation2 = presentationBuilder.finalize();
+                console.log(row[0], row[1], j);
+                let result = Object.assign(Object.assign({}, obj), { id: row[0], cred_num: row[1], proof_num: j, proof: presentation2.proof.bytes });
+                rows_proof.push(result);
+            }
+        });
+        yield csvWriterProofs.writeRecords(rows_proof);
+    }
+}));
 // TODO
 // Create 10000 credentials information (depends on time to generate)
 // Generate for each a holder proof (or a 100, to have some possibilities)

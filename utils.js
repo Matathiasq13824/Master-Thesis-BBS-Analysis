@@ -51,6 +51,7 @@ exports.get_row_table_from_csv = get_row_table_from_csv;
 exports.get_column_table_from_csv = get_column_table_from_csv;
 exports.get_zla_code = get_zla_code;
 exports.get_random_value_from_array = get_random_value_from_array;
+exports.getRandomValuesFromArray = getRandomValuesFromArray;
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const sync_1 = require("csv-parse/sync");
@@ -359,7 +360,19 @@ function get_random_value_from_array(array) {
 function randomValueBetween(min, max) {
     return Math.random() * (max - min) + min;
 }
+function getRandomValuesFromArray(array, count) {
+    if (count > array.length) {
+        throw new Error("Count cannot be greater than the array length");
+    }
+    const shuffled = [...array]; // Create a copy to avoid modifying the original array
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const randomIndex = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[i]]; // Swap elements
+    }
+    return shuffled.slice(0, count); // Take the first `count` elements
+}
 module.exports = {
+    getRandomValuesFromArray,
     stringToBytes,
     get_control_number,
     get_control_number_AVS,

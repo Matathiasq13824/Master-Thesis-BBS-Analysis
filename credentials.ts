@@ -2,7 +2,7 @@ import { initializeWasm, BBSKeypair, BBSSignatureParams, BBS_SIGNATURE_PARAMS_LA
     CredentialSchema, BBSCredentialBuilder, BBSCredential, SUBJECT_STR, Presentation, PresentationBuilder, BoundCheckBppParams, 
     BBSSecretKey} from '@docknetwork/crypto-wasm-ts'
 
-import {get_random_image_signature,get_random_image_byte_array,get_row_table_from_csv, get_zla_code,get_random_first_name,get_column_table_from_csv, get_random_value_from_array, get_random_number, get_random_gender, get_random_age, get_random_start_and_expiration_date ,get_control_number, stringToBytes, get_control_number_AVS, get_random_AVS_number, get_random_height } from './utils';
+import {getRandomValuesFromArray, get_random_image_signature,get_random_image_byte_array,get_row_table_from_csv, get_zla_code,get_random_first_name,get_column_table_from_csv, get_random_value_from_array, get_random_number, get_random_gender, get_random_age, get_random_start_and_expiration_date ,get_control_number, stringToBytes, get_control_number_AVS, get_random_AVS_number, get_random_height } from './utils';
 import * as path from "path";
 import { parse } from 'csv-parse/sync';
 import * as fs from "fs";
@@ -67,23 +67,23 @@ const schema2 = {
   };
 
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
-  let outputPathInformations = "credentials/identity_information.csv"
-  let headersInformations = [{id: "id", title: "Personal Number"},{id: "data", title: "JSON information"}, {id: "public", title: "Public Key"}, {id: "secret", title: "Secret Key"}]
-  const csvWriterInformation = createCsvWriter({
-      path: outputPathInformations,
-      header: headersInformations
-  });
-  let rows_informations: { id: number; data: string; }[] = [];
+  // let outputPathInformations = "credentials/identity_information.csv"
+  // let headersInformations = [{id: "id", title: "Personal Number"},{id: "data", title: "JSON information"}, {id: "public", title: "Public Key"}, {id: "secret", title: "Secret Key"}]
+  // const csvWriterInformation = createCsvWriter({
+  //     path: outputPathInformations,
+  //     header: headersInformations
+  // });
+  // let rows_informations: { id: number; data: string; }[] = [];
 
-  let last_name_rows = get_column_table_from_csv("stat/last_name.csv", 0);
-  let origin_autority_rows = get_column_table_from_csv("stat/EtatCommunes.csv", 5);
-  let male_rows = get_column_table_from_csv("stat/first_name.csv", 1, 6)
-  let female_rows = get_column_table_from_csv("stat/first_name.csv", 0, 6)
-  let all_age_rows = get_row_table_from_csv("stat/output_age.csv", 1);
-  let male_age_rows = get_row_table_from_csv("stat/output_age.csv", 2);
-  let female_age_rows = get_row_table_from_csv("stat/output_age.csv", 3);
-  let age_rows: any[][] = [all_age_rows.table,male_age_rows.table,female_age_rows.table]
-  let total_values: any[] = [all_age_rows.total_value,male_age_rows.total_value,female_age_rows.total_value]
+  // let last_name_rows = get_column_table_from_csv("stat/last_name.csv", 0);
+  // let origin_autority_rows = get_column_table_from_csv("stat/EtatCommunes.csv", 5);
+  // let male_rows = get_column_table_from_csv("stat/first_name.csv", 1, 6)
+  // let female_rows = get_column_table_from_csv("stat/first_name.csv", 0, 6)
+  // let all_age_rows = get_row_table_from_csv("stat/output_age.csv", 1);
+  // let male_age_rows = get_row_table_from_csv("stat/output_age.csv", 2);
+  // let female_age_rows = get_row_table_from_csv("stat/output_age.csv", 3);
+  // let age_rows: any[][] = [all_age_rows.table,male_age_rows.table,female_age_rows.table]
+  // let total_values: any[] = [all_age_rows.total_value,male_age_rows.total_value,female_age_rows.total_value]
 
 
 // initializeWasm().then(() => {
@@ -178,42 +178,50 @@ const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 //   csvWriterCredentials.writeRecords(rows_credentials)
 // })
 
-
-let current_date = new Date("1-1-2025").getTime()
-let max_expiration_date = new Date("1-1-2035").getTime();
-initializeWasm().then(() => {
+let keys = Object.keys(schema2.properties.credentialSubject.properties)
+//let current_date = new Date("1-1-2025").getTime()
+//let max_expiration_date = new Date("1-1-2035").getTime();
+initializeWasm().then(async () => {
   const params = BBSSignatureParams.generate(100, BBS_SIGNATURE_PARAMS_LABEL_BYTES);
   // Secret and public key of the issuer
   const keypair = BBSKeypair.generate(params, stringToBytes("seed1"));
   const secretKey = keypair.secretKey;
   const publicKey = keypair.publicKey;
-  let headersProofs  = [{id: "id", title: "Personal Number"}, {id: "cred_num", title: "Number of Holder Credential"}, {id: "proof_num", title: "Number of the proof"},{id: "data", title: "JSON information"}]
+  let headersProofs  = [{id: "id", title: "Personal Number"}, {id: "cred_num", title: "Number of Holder Credential"}, {id: "proof_num", title: "Number of the proof"},{id: "proof", title: "proof array"}]
+  let headerKeys = keys.map((x)=> {return {id: x, title: x}})
+  headersProofs = headersProofs.concat(headerKeys)
   //recovery of the informations
   const csvFilePath = path.resolve(__dirname, "credentials/identity_credentials.csv");
   const fileContent = fs.readFileSync(csvFilePath, { encoding: 'utf-8' });
-  let result:string[][] = parse(fileContent, {delimiter: ',',}).filter((row: string[]) => row[1] === '0').slice(1);  
-  for(let t = 0; t < 100; t++){
+  let result:string[][] = parse(fileContent, {delimiter: ',',}).filter((row: string[]) => row[1] === '0').slice(1).slice(0,10);  
+  for(let t = 0; t < 2; t++){
     let outputPathProofs = `credentials/identity_proofs_${t}.csv`
     const csvWriterProofs  = createCsvWriter({
-          path: outputPathProofs ,
+          path: outputPathProofs,
           header: headersProofs 
-      });
-      let result_temp = result.slice(0,100);
-      let rows_proof:any[] = [];
-      result_temp.forEach((row:string[]) => {
-        let verifiableCredential = BBSCredential.fromJSON(JSON.parse(row[2]))
-        const presentationBuilder = new PresentationBuilder();
-        presentationBuilder.addCredential(verifiableCredential, publicKey)
-        const boundCheckBppParams1 = new BoundCheckBppParams(stringToBytes('Common Reference String')).decompress();
-        presentationBuilder.enforceBounds(0, 'credentialSubject.expirationDate', current_date, max_expiration_date, 'expirationCheck', boundCheckBppParams1);
-        rows_proof = [];
-        for (let j = 0; j< 1000; j++){
-          const presentation2 = presentationBuilder.finalize();
-          console.log(row[0], row[1], j);
-          rows_proof.push({id:row[0], cred_num: row[1], proof_num:j, data:JSON.stringify(presentation2.toJSON())});
-        }
-      })
-      csvWriterProofs.writeRecords(rows_proof)
+    });
+    let selected_values = getRandomValuesFromArray(keys, Math.floor(Math.random() * (keys.length+ 1)))
+
+    let rows_proof:any[] = [];
+    result.forEach((row:string[]) => {
+
+      let verifiableCredential = BBSCredential.fromJSON(JSON.parse(row[2]))
+      const obj = selected_values.reduce((o, key) => ({ ...o, [key]: (verifiableCredential.subject as Record<string, any>)[key]}), {})
+      const presentationBuilder = new PresentationBuilder();
+      presentationBuilder.addCredential(verifiableCredential, publicKey)
+      const boundCheckBppParams1 = new BoundCheckBppParams(stringToBytes('Common Reference String')).decompress();
+      //presentationBuilder.enforceBounds(0, 'credentialSubject.expirationDate', current_date, max_expiration_date, 'expirationCheck', boundCheckBppParams1);
+      presentationBuilder.markAttributesRevealed(0,new Set(selected_values.map(x => "credentialSubject."+x)))
+
+      for (let j = 0; j< 10; j++){
+        const presentation2 = presentationBuilder.finalize();
+        console.log(row[0], row[1], j);
+        let result = {...obj, id:row[0], cred_num: row[1], proof_num:j, proof:presentation2.proof.bytes}
+        
+        rows_proof.push(result);
+      }
+    })
+    await csvWriterProofs.writeRecords(rows_proof)
   }
 })
 
