@@ -7,6 +7,7 @@
     "csv-writer": "^1.6.0",
     "flat": "^6.0.1",
     "json2csv": "^6.0.0-alpha.2",
+    "moment": "^2.30.1",
     "tslab": "^1.0.22"
   },
   "devDependencies": {

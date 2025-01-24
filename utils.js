@@ -33,30 +33,139 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stringToBytes = stringToBytes;
-exports.get_control_number = get_control_number;
-exports.get_control_number_AVS = get_control_number_AVS;
-exports.get_random_AVS_number = get_random_AVS_number;
-exports.gaussianRandom = gaussianRandom;
-exports.get_random_height = get_random_height;
-exports.get_random_gender = get_random_gender;
-exports.get_random_first_name = get_random_first_name;
+exports.string_to_bytes = string_to_bytes;
+exports.gaussian_random = gaussian_random;
 exports.get_random_number = get_random_number;
-exports.get_random_age = get_random_age;
-exports.get_random_start_and_expiration_date = get_random_start_and_expiration_date;
-exports.get_probabilities_from_csv = get_probabilities_from_csv;
-exports.get_random_image_byte_array = get_random_image_byte_array;
-exports.get_random_image_signature = get_random_image_signature;
+exports.random_value_between = random_value_between;
 exports.get_row_table_from_csv = get_row_table_from_csv;
 exports.get_column_table_from_csv = get_column_table_from_csv;
-exports.get_zla_code = get_zla_code;
+exports.get_probabilities_from_array = get_probabilities_from_array;
 exports.get_random_value_from_array = get_random_value_from_array;
-exports.getRandomValuesFromArray = getRandomValuesFromArray;
+exports.get_random_values_from_array = get_random_values_from_array;
+exports.get_control_number = get_control_number;
+exports.get_control_number_AVS = get_control_number_AVS;
+exports.getRandomDateForAge = getRandomDateForAge;
+exports.get_random_gender = get_random_gender;
+exports.get_random_first_name = get_random_first_name;
+exports.get_random_image_byte_array = get_random_image_byte_array;
+exports.get_random_image_signature = get_random_image_signature;
+exports.get_random_AVS_number = get_random_AVS_number;
+exports.get_random_height = get_random_height;
+exports.get_random_age_identity_card = get_random_age_identity_card;
+exports.get_random_start_and_expiration_date_identity_card = get_random_start_and_expiration_date_identity_card;
+exports.get_zla_code_identity_card = get_zla_code_identity_card;
+exports.get_zla_code_driving_license = get_zla_code_driving_license;
+exports.get_random_age_driving_license = get_random_age_driving_license;
+exports.get_random_issuance_date_driving_license = get_random_issuance_date_driving_license;
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const sync_1 = require("csv-parse/sync");
-function stringToBytes(str) {
+/*
+*
+*           Helper Functions
+*
+*/
+function string_to_bytes(str) {
     return Uint8Array.from(Buffer.from(str, "utf-8"));
+}
+// Standard Normal variate using Box-Muller transform.
+function gaussian_random(mean = 0, stdev = 1) {
+    const u = 1 - Math.random(); // Converting [0,1) to (0,1]
+    const v = Math.random();
+    const z = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+    // Transform to the desired mean and standard deviation:
+    return z * stdev + mean;
+}
+//Used for the document number and other random values
+// No precise definition about this number
+// Random, unique
+// Big number in string format
+// One letter, 7 number, take 10 number to have around the same size set
+function get_random_number(size) {
+    if (size > Number.MAX_SAFE_INTEGER) {
+        return BigInt(Math.floor(Math.random() * size));
+    }
+    else
+        return Math.floor(Math.random() * size);
+}
+function random_value_between(min, max) {
+    return Math.floor(Math.random() * (max - min) + min);
+}
+function get_row_table_from_csv(file, row, start_index, total_index) {
+    const csvFilePath = path.resolve(__dirname, file);
+    const fileContent = fs.readFileSync(csvFilePath, { encoding: 'utf-8' });
+    let result = (0, sync_1.parse)(fileContent, { delimiter: ',', });
+    // If no index values, the csv file must contain at the last line the number of columns who contain label
+    let size_category = result[result.length - 1].filter((x) => x !== '');
+    // If not start_index specified, 
+    // assume the table of probabilities start after the label name and the total value
+    start_index = start_index || size_category[0];
+    start_index++;
+    total_index = total_index || size_category[0];
+    let total_value = result[row][total_index];
+    let table = result[row].slice(start_index).filter((x) => x !== '');
+    return { table: table, total_value: total_value };
+}
+function get_column_table_from_csv(file, column, start_index = 0) {
+    try {
+        // Resolve the file path and read the file content
+        const csvFilePath = path.resolve(__dirname, file);
+        let fileContent = fs.readFileSync(csvFilePath, { encoding: 'utf-8' });
+        // Remove BOM if it exists
+        if (fileContent.charCodeAt(0) === 0xfeff) {
+            fileContent = fileContent.slice(1);
+        }
+        // Parse the CSV file content
+        const records = (0, sync_1.parse)(fileContent, { delimiter: ',' });
+        // Validate the column and start_index
+        if (column < 0 || column >= records[0].length) {
+            throw new Error(`Invalid column index: ${column}`);
+        }
+        if (start_index < 0 || start_index >= records.length) {
+            throw new Error(`Invalid start index: ${start_index}`);
+        }
+        // Extract the specified column starting from start_index
+        const columnValues = [];
+        for (let i = start_index; i < records.length; i++) {
+            if (records[i][column] !== "") {
+                columnValues.push(records[i][column]);
+            }
+        }
+        return columnValues;
+    }
+    catch (error) {
+        console.error(`Error processing CSV file: ${error}`);
+        return [];
+    }
+}
+function get_probabilities_from_array(total_value, table) {
+    let max = total_value;
+    let index = Math.floor(Math.random() * max);
+    let age = -9999;
+    for (let i = 0; i < table.length; i++) {
+        if (index <= parseInt(table[i])) {
+            age = i;
+            i = table.length;
+        }
+        index -= parseInt(table[i]);
+    }
+    return age;
+}
+function get_random_value_from_array(array) {
+    let max = array.length;
+    let index = Math.floor(Math.random() * max);
+    return array[index];
+}
+function get_random_values_from_array(array, count) {
+    if (count > array.length) {
+        throw new Error("Count cannot be greater than the array length");
+    }
+    const shuffled = [...array]; // Create a copy to avoid modifying the original array
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const randomIndex = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[i]]; // Swap elements
+    }
+    return shuffled.slice(0, count); // Take the first `count` elements
 }
 function get_control_number(str) {
     // Transform Accent to normal letter and uppercase everything
@@ -100,37 +209,29 @@ function get_control_number_AVS(str) {
     }
     return (10 - (sum % 10)) % 10;
 }
-function get_random_AVS_number() {
-    const max = 10; // 9 random number
-    const number = 9;
-    let random = "";
-    for (let i = 0; i < number; i++) {
-        random += Math.floor(Math.random() * max).toString();
+function get_random_letters(count, letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ") {
+    return Array.from({ length: count }, () => letters[Math.floor(Math.random() * letters.length)]).join('');
+}
+function getRandomDateForAge(birthDate, currentDate, targetAge) {
+    // Calculate the start date when the person reached the target age
+    const startDate = new Date(birthDate);
+    startDate.setFullYear(startDate.getFullYear() + (targetAge - 1));
+    // Calculate the end date, which is one year after the start date
+    const endDate = new Date(startDate);
+    endDate.setFullYear(endDate.getFullYear() + 1);
+    // Ensure the end date doesn't go beyond the current date
+    if (endDate.getTime() > currentDate) {
+        endDate.setTime(currentDate);
     }
-    let control_number = get_control_number_AVS("756" + random);
-    let random_with_separation = random.substring(0, 4) + "." + random.substring(4, 8) + "." + random.at(8);
-    return "756." + random_with_separation + control_number;
+    // Generate a random date between the start and end dates
+    const randomTimestamp = random_value_between(startDate.getTime(), endDate.getTime());
+    return randomTimestamp;
 }
-// Standard Normal variate using Box-Muller transform.
-function gaussianRandom(mean = 0, stdev = 1) {
-    const u = 1 - Math.random(); // Converting [0,1) to (0,1]
-    const v = Math.random();
-    const z = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
-    // Transform to the desired mean and standard deviation:
-    return z * stdev + mean;
-}
-// Based on the result of this article from 2017
-// https://www.sciencedirect.com/science/article/pii/S221133552200287X#t0005
-// Below 14, the height is not added to the identity card 
-// https://www.fedlex.admin.ch/eli/oc/2002/468/fr (Art 14, al 3)
-function get_random_height(gender, age) {
-    if (age && age < 14) {
-        return 0;
-    }
-    let mean = (gender === "M" ? 177.0 : 164.6);
-    let stdev = (gender === "M" ? 7.1 : 6.5);
-    return Math.floor(gaussianRandom(mean, stdev));
-}
+/*
+*
+*           General Generation Function
+*
+*/
 // Swiss gender percentage
 // https://www.swissstats.bfs.admin.ch/collection/ch.admin.bfs.swissstat.en.issue200111551900/article/issue200111551900-04
 function get_random_gender() {
@@ -147,17 +248,50 @@ function get_random_first_name(gender, male_rows = get_column_table_from_csv("st
         return get_random_value_from_array(female_rows);
     }
 }
-//Used for the document number and other random values
-// No precise definition about this number
-// Random, unique
-// Big number in string format
-// One letter, 7 number, take 10 number to have around the same size set
-function get_random_number(size) {
-    if (size > Number.MAX_SAFE_INTEGER) {
-        return BigInt(Math.floor(Math.random() * size));
+// https://www.fedlex.admin.ch/eli/cc/2010/96/de#art_12
+// Expected to have 1980*1440 pixels but caused issues of memory, (For a value that need only to be unique )
+// so it was reduced at most as possible
+function get_random_image_byte_array(length = Math.pow(10, 200)) {
+    return "data:image/png;base64," + get_random_number(length).toString();
+}
+// https://www.fedlex.admin.ch/eli/cc/2010/96/de#art_11
+function get_random_image_signature(age = 18) {
+    if (age < 7) {
+        return "***";
     }
-    else
-        return Math.floor(Math.random() * size);
+    else {
+        //Only black and white pixels, one fourth of the face image size
+        //One pixel with 8 bits, represented with a byte => 8 pixel represented with a byte
+        return get_random_image_byte_array((Math.pow(10, 200)) / (4 * 8));
+    }
+}
+/*
+*
+*           Identity Card Generation Function
+*
+*/
+function get_random_AVS_number() {
+    const max = 10; // 9 random number
+    const number = 9;
+    let random = "";
+    for (let i = 0; i < number; i++) {
+        random += Math.floor(Math.random() * max).toString();
+    }
+    let control_number = get_control_number_AVS("756" + random);
+    let random_with_separation = random.substring(0, 4) + "." + random.substring(4, 8) + "." + random.at(8);
+    return "756." + random_with_separation + control_number;
+}
+// Based on the result of this article from 2017
+// https://www.sciencedirect.com/science/article/pii/S221133552200287X#t0005
+// Below 14, the height is not added to the identity card 
+// https://www.fedlex.admin.ch/eli/oc/2002/468/fr (Art 14, al 3)
+function get_random_height(gender, age) {
+    if (age && age < 14) {
+        return 0;
+    }
+    let mean = (gender === "M" ? 177.0 : 164.6);
+    let stdev = (gender === "M" ? 7.1 : 6.5);
+    return Math.floor(gaussian_random(mean, stdev));
 }
 // https://www.pxweb.bfs.admin.ch/pxweb/fr/px-x-0102010000_103/-/px-x-0102010000_103.px/table/tableViewLayout2/
 // As bounded Zero-Knowledge proof need positive integer, 
@@ -166,7 +300,7 @@ function get_random_number(size) {
 // We thus need to shift the milliseconds values to only positive one by the oldes birth name possible
 // In this experiment, as the maximum age is 100 years, taking the 1 january 1920 assure
 // to not have any negative milliseconds values.
-function get_random_age(gender, table, total_value, relative_min_date = new Date("1-1-1920").getTime()) {
+function get_random_age_identity_card(gender, table, total_value, relative_min_date = new Date("1-1-1920").getTime()) {
     // Recover the correct percentage, using the general one if no gender precised
     let row = 0;
     if (!gender) {
@@ -192,7 +326,7 @@ function get_random_age(gender, table, total_value, relative_min_date = new Date
         new_table = table[row - 1];
         new_total_value = total_value[row - 1];
     }
-    let age = get_probabilities_from_csv(new_total_value, new_table);
+    let age = get_probabilities_from_array(new_total_value, new_table);
     // After generating the age, we must generate the date of birth. 
     // A date is randomly selected and in an uniform way to correspond to the age
     // For simplicity, we consider the current day to 1 january 2025
@@ -200,12 +334,12 @@ function get_random_age(gender, table, total_value, relative_min_date = new Date
     let oldest_day = new Date("01-01-" + (current_year - age).toString()).getTime();
     let newset_day = new Date("02-01-" + (current_year - 1 - age).toString()).getTime();
     return { age: age,
-        birth_date: new Date(randomValueBetween(newset_day, oldest_day)).getTime() - relative_min_date };
+        birth_date: new Date(random_value_between(newset_day, oldest_day)).getTime() - relative_min_date };
 }
 // https://www.fedlex.admin.ch/eli/oc/2002/468/fr, art 5 
 // As the issuance day won't be older than 20 years, the issue with negative milliseconds value
 // won't appear.
-function get_random_start_and_expiration_date(age, expired) {
+function get_random_start_and_expiration_date_identity_card(age, expired) {
     let time = 0;
     // if more than 18 year or not precised, 10 year
     if (!age || age >= 18) {
@@ -225,14 +359,14 @@ function get_random_start_and_expiration_date(age, expired) {
     let current_day;
     if (expired && expired === true) {
         //if expired, the start day must be before the number of year
-        oldest_day_possible = new Date("01-01-" + (current_year - time - Math.floor(randomValueBetween(1, 10))).toString()).getTime();
+        oldest_day_possible = new Date("01-01-" + (current_year - time - Math.floor(random_value_between(1, 10))).toString()).getTime();
         current_day = new Date("01-01-" + (current_year - time).toString()).getTime();
     }
     else {
         oldest_day_possible = new Date("01-01-" + (current_year - time).toString()).getTime();
         current_day = new Date("01-01-" + (current_year).toString()).getTime();
     }
-    let issuance_date = new Date(randomValueBetween(current_day, oldest_day_possible));
+    let issuance_date = new Date(random_value_between(current_day, oldest_day_possible));
     let expiration_date = new Date(issuance_date);
     //The expiration date is time an 1 day after the issuance date
     expiration_date.setFullYear(expiration_date.getFullYear() + time);
@@ -242,83 +376,7 @@ function get_random_start_and_expiration_date(age, expired) {
         expiration_date: expiration_date.getTime()
     };
 }
-function get_probabilities_from_csv(total_value, table) {
-    let max = total_value;
-    let index = Math.floor(Math.random() * max);
-    let age = -9999;
-    for (let i = 0; i < table.length; i++) {
-        if (index <= parseInt(table[i])) {
-            age = i;
-            i = table.length;
-        }
-        index -= parseInt(table[i]);
-    }
-    return age;
-}
-// https://www.fedlex.admin.ch/eli/cc/2010/96/de#art_12
-// Expected to have 1980*1440 pixels but caused issues of memory, (For a value that need only to be unique )
-// so it was reduced at most as possible
-function get_random_image_byte_array(length = Math.pow(10, 200)) {
-    return "data:image/png;base64," + get_random_number(length).toString();
-}
-// https://www.fedlex.admin.ch/eli/cc/2010/96/de#art_11
-function get_random_image_signature(age = 18) {
-    if (age < 7) {
-        return "***";
-    }
-    else {
-        //Only black and white pixels, one fourth of the face image size
-        //One pixel with 8 bits, represented with a byte => 8 pixel represented with a byte
-        return get_random_image_byte_array((Math.pow(10, 200)) / (4 * 8));
-    }
-}
-function get_row_table_from_csv(file, row, start_index, total_index) {
-    const csvFilePath = path.resolve(__dirname, file);
-    const fileContent = fs.readFileSync(csvFilePath, { encoding: 'utf-8' });
-    let result = (0, sync_1.parse)(fileContent, { delimiter: ',', });
-    let size_category = result[result.length - 1].filter((x) => x !== '');
-    // If not start of the table specified, 
-    //assume the table of probabilities start after the label name and the total
-    start_index = start_index || size_category[0];
-    start_index++;
-    total_index = total_index || size_category[0];
-    let total_value = result[row][total_index];
-    let table = result[row].slice(start_index);
-    return { table: table, total_value: total_value };
-}
-function get_column_table_from_csv(file, column, start_index = 0) {
-    try {
-        // Resolve the file path and read the file content
-        const csvFilePath = path.resolve(__dirname, file);
-        let fileContent = fs.readFileSync(csvFilePath, { encoding: 'utf-8' });
-        // Remove BOM if it exists
-        if (fileContent.charCodeAt(0) === 0xfeff) {
-            fileContent = fileContent.slice(1);
-        }
-        // Parse the CSV file content
-        const records = (0, sync_1.parse)(fileContent, { delimiter: ',' });
-        // Validate the column and start_index
-        if (column < 0 || column >= records[0].length) {
-            throw new Error(`Invalid column index: ${column}`);
-        }
-        if (start_index < 0 || start_index >= records.length) {
-            throw new Error(`Invalid start index: ${start_index}`);
-        }
-        // Extract the specified column starting from start_index
-        const columnValues = [];
-        for (let i = start_index; i < records.length; i++) {
-            if (records[i][column] !== "") {
-                columnValues.push(records[i][column]);
-            }
-        }
-        return columnValues;
-    }
-    catch (error) {
-        console.error(`Error processing CSV file: ${error}`);
-        return [];
-    }
-}
-function get_zla_code(documentNumber, birth_date, gender, expiration_date, first_name, last_name) {
+function get_zla_code_identity_card(documentNumber, birth_date, gender, expiration_date, first_name, last_name) {
     // First Line
     let firstLine = "ID" + "CHE" + documentNumber;
     for (let i = documentNumber.length; i < 9; i++) {
@@ -352,43 +410,120 @@ function get_zla_code(documentNumber, birth_date, gender, expiration_date, first
     }
     return firstLine + "\n" + secondLine + "\n" + thirdLine.slice(0, 31);
 }
-function get_random_value_from_array(array) {
-    let max = array.length;
-    let index = Math.floor(Math.random() * max);
-    return array[index];
-}
-function randomValueBetween(min, max) {
-    return Math.random() * (max - min) + min;
-}
-function getRandomValuesFromArray(array, count) {
-    if (count > array.length) {
-        throw new Error("Count cannot be greater than the array length");
+/*
+*
+*       Driving Licence Generation Function
+*
+*/
+function get_zla_code_driving_license(documentNumber, birth_date, first_name, last_name) {
+    // First Line
+    let firstLine = get_random_letters(3)
+        + get_random_number(1000).toString().padStart(3, "0")
+        + get_random_letters(1, "DFIR")
+        + "<<";
+    // Second Line
+    let secondLine = "FA" + "CHE" + documentNumber + "<<";
+    let birth_d = new Date(birth_date).toLocaleDateString().split("/");
+    secondLine += birth_d[2].slice(2, 4);
+    secondLine += birth_d[0].length === 2 ? birth_d[0] : "0" + birth_d[0];
+    secondLine += birth_d[1].length === 2 ? birth_d[1] : "0" + birth_d[1];
+    for (let i = secondLine.length; i < 29; i++) {
+        secondLine += "<";
     }
-    const shuffled = [...array]; // Create a copy to avoid modifying the original array
-    for (let i = shuffled.length - 1; i > 0; i--) {
-        const randomIndex = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[i]]; // Swap elements
+    // Last Line
+    let f_name = first_name.normalize("NFD").replace(/[ -]/g, "<").replace(/[\u0300-\u036f'.,]ß/g, "").toUpperCase();
+    let l_name = last_name.normalize("NFD").replace(/[ -]/g, "<").replace(/[\u0300-\u036f'.,]/g, "").toUpperCase();
+    let thirdLine = l_name + "<<" + f_name;
+    for (let i = thirdLine.length; i < 30; i++) {
+        thirdLine += "<";
     }
-    return shuffled.slice(0, count); // Take the first `count` elements
+    return firstLine + "\n" + secondLine + "\n" + thirdLine.slice(0, 31);
+}
+function get_random_age_driving_license(table, total_value, relative_min_date = new Date("1-1-1920").getTime()) {
+    // Recover the correct percentage, using the general one if no gender precised
+    let new_table;
+    let new_total_value;
+    if (!table || !total_value) {
+        let temp = get_row_table_from_csv("stat/age_gender_driving_license.csv", 8);
+        new_table = temp.table;
+        new_total_value = temp.total_value;
+    }
+    else {
+        new_table = table;
+        new_total_value = total_value;
+    }
+    let age_interval = get_probabilities_from_array(new_total_value, new_table);
+    // As we have only interval of age, we choose randomly and uniformly one age in it.
+    let intevals = [[15, 17], [18, 24], [25, 44], [45, 64], [65, 74], [75, 100]];
+    let age = Math.floor(random_value_between(intevals[age_interval][0], intevals[age_interval][1]));
+    // After generating the age, we must generate the date of birth. 
+    // A date is randomly selected and in an uniform way to correspond to the age
+    // For simplicity, we consider the current day to 1 january 2025
+    let current_year = 2025;
+    let oldest_day = new Date("01-01-" + (current_year - age).toString()).getTime();
+    let newset_day = new Date("02-01-" + (current_year - 1 - age).toString()).getTime();
+    return { age: age,
+        birth_date: new Date(random_value_between(newset_day, oldest_day)).getTime() - relative_min_date };
+}
+function get_random_issuance_date_driving_license(birthday, max_age, min_age, table, total_value, current_date = new Date("1-1-2025").getTime()) {
+    let intevals = [[15, 17], [18, 24], [25, 44], [45, 64], [65, 74], [75, 100]];
+    // Recover the correct percentage, using the general one if no gender precised
+    let selected_table;
+    let new_total_value;
+    if (!table || !total_value) {
+        let temp = get_row_table_from_csv("stat/age_gender_driving_license.csv", 8, 1, 1);
+        selected_table = temp.table;
+        new_total_value = temp.total_value;
+    }
+    else {
+        selected_table = table;
+        new_total_value = total_value;
+    }
+    let new_intervals = [];
+    let new_table = [];
+    intevals.forEach((x, i) => {
+        if ((x[0] <= max_age && x[1] >= min_age)) {
+            new_intervals.push(x);
+            new_table.push(selected_table[i]);
+        }
+        else {
+            new_total_value -= parseInt(selected_table[i]);
+        }
+    });
+    let age_interval = new_intervals[get_probabilities_from_array(new_total_value, new_table)];
+    if (age_interval[1] > max_age) {
+        age_interval[1] = max_age;
+    }
+    if (age_interval[0] < min_age) {
+        age_interval[0] = min_age;
+    }
+    // As we have only interval of age, we choose randomly and uniformly one age in it.
+    let issuance_age = Math.floor(random_value_between(age_interval[0], age_interval[1]));
+    return getRandomDateForAge(birthday, current_date, issuance_age);
 }
 module.exports = {
-    getRandomValuesFromArray,
-    stringToBytes,
+    get_random_values_from_array,
+    string_to_bytes,
     get_control_number,
     get_control_number_AVS,
     get_random_height,
     get_random_AVS_number,
-    get_random_start_and_expiration_date,
-    get_random_age,
+    get_random_start_and_expiration_date_identity_card,
+    get_random_age_identity_card,
+    get_random_age_driving_license,
     get_random_gender,
-    gaussianRandom,
-    get_probabilities_from_csv,
+    gaussian_random,
+    get_probabilities_from_array,
     get_random_number,
     get_column_table_from_csv,
     get_random_value_from_array,
     get_random_first_name,
-    get_zla_code,
+    get_zla_code_identity_card,
     get_row_table_from_csv,
     get_random_image_byte_array,
-    get_random_image_signature
+    get_random_image_signature,
+    random_value_between,
+    getRandomDateForAge,
+    get_random_issuance_date_driving_license,
+    get_zla_code_driving_license
 };
