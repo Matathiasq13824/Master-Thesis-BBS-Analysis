@@ -5,4 +5,4 @@
  - The folder `typescript`, containing all the TypeScript code used for the generation of identities, credentials and proof.
  - The folder `python`, containing all the python code used for the analysis of the proof and the training and evaluation of the machine learning models
 
-The Thesis is readable on overleaf : https://www.overleaf.com/read/wtqptgbfjxgw#e13e0f
+The Thesis is readable on [overleaf](https://www.overleaf.com/read/wtqptgbfjxgw#e13e0f)
