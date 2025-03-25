@@ -1,9 +1,11 @@
 import { CredentialSchema} from '@docknetwork/crypto-wasm-ts'
-import {get_random_issuance_date_driving_license, getRandomDateForAge,random_value_between, 
+import {get_random_issuance_date_driving_license, get_random_date_for_age,random_value_between, 
     get_random_image_signature,get_random_image_byte_array, get_row_table_from_csv, get_zla_code_driving_license,
     get_random_first_name,get_column_table_from_csv, get_random_value_from_array, get_random_number, 
      get_random_age_driving_license, get_probabilities_from_array } from './utils';
 import moment from 'moment';
+
+// Recovery beforehand of the statistical data to increase speed and reduce bottleneck
 const last_name_rows = get_column_table_from_csv("stat/last_name.csv", 0, 6);
 const origin_autority_rows = get_column_table_from_csv("stat/Cantons.csv", 1, 1);
 const male_rows = get_column_table_from_csv("stat/first_name.csv", 1, 6)
@@ -18,10 +20,10 @@ const new_driver_age_B_rows =  get_row_table_from_csv("stat/age_gender_driving_l
 const current_date = new Date("1-1-2025").getTime()
 const relative_min_date= new Date("1-1-1920").getTime()
 
+// Function used to alter the schema in function of the number of attributes.
 function get_schema_add_information(num_additional_info:number){
     return {type:'array', items: Array.from({ length: num_additional_info }, (_, i) => ({type:"string"}))}
 }
-
 function get_schema_category(num_additional_info:number) {
   return {
         type:'object',
@@ -33,12 +35,11 @@ function get_schema_category(num_additional_info:number) {
         }
     }
 }
-
 function get_schema_categories_array(num_categories: number, num_additional_infos:number[]) {
     return {type:'array', items: Array.from({ length: num_categories }, (_, i) => (get_schema_category(num_additional_infos[i])))}
 }
 
-
+// Function to generate the schema of the driving license, varying based on the number of attributes
 export function get_driving_license_schema(num_categories: number, num_additional_infos_categories:number[], num_additional_info:number) {
     return {
         $schema: 'http://json-schema.org/draft-07/schema#',
@@ -100,9 +101,10 @@ export function get_driving_license_schema(num_categories: number, num_additiona
 
 }
 
+// Generate a driving license identity randomly 
 export function get_driving_license_attributes(){
     // As the first category obtained in a driving license is generally either A or B
-    // (And as we have the obtention statistics of these two categories)
+    // (And as we have only the obtention statistics of these two categories)
     // We choose randomly one of them to generate afterward the age and the gender
     let gender:string;
     let age;
@@ -120,12 +122,13 @@ export function get_driving_license_attributes(){
         if(age.age === 15){
             additionalInformationCategories["A1"] = {categoryName:"A1",...emptyCategory}
             additionalInformationCategories["A1"]["addInfo"] = ["45kmh"]
+            // Get the issuance date between the current day and the las birth day (as the identity has 15 y.o)
             let last_birthday = new Date(age.birth_date)
             last_birthday.setFullYear(new Date(current_date).getFullYear()-1)
-            issuance_date = getRandomDateForAge(last_birthday.getTime(), current_date, 15)
+            issuance_date = get_random_date_for_age(last_birthday.getTime(), current_date, 15)
             additionalInformationCategories["A1"]["issuanceDate"] = issuance_date
 
-        } else if (age.age ===16 || age.age === 17) {
+        } else if (age.age === 16 || age.age === 17) {
             additionalInformationCategories["A1"] = {categoryName:"A1",...emptyCategory}
             issuance_date = get_random_issuance_date_driving_license(age.birth_date,age.age,15, new_driver_age_A_rows.table, new_driver_age_A_rows.total_value, current_date)
             additionalInformationCategories["A1"]["issuanceDate"] = issuance_date
@@ -158,17 +161,6 @@ export function get_driving_license_attributes(){
             additionalInformationCategories["A"]["issuanceDate"] = get_random_issuance_date_driving_license(age.birth_date,age.age,18, new_driver_age_A_rows.table, new_driver_age_A_rows.total_value, current_date)
         }
     }
-
-
-    // General issuance day
-    // When the identity obtained the driving license
-    // Use statistic of the new drivers for the age they have obtained it (if the value is higher than their current age...redo it ? No, use a smaller table)
-    // age give the category array, can't use category higher....need to change the total value corresponding to it
-    // After having the category, check if the current age is inside, if yes, adjust the category, if the age is equal to the smaller value, use the smaller value
-    // choose a random date in the year between two birthday, or a date between the last birthday and the current date (1-1-2025)
-    // Minimum age for each category (18 for A, 15 for A1, 18 for B)
-    // If A1, only 15, 16 or 17, no need to make the random selection fo categories
-
 
     // Categories issuance day
 
@@ -542,8 +534,6 @@ export function get_driving_license_attributes(){
     Object.keys(additionalInformationCategories).forEach((x:any) => {
         num_additional_infos_categories.push(additionalInformationCategories[x]["addInfo"].length)
     })
-
-    let schema = get_driving_license_schema(Object.keys(additionalInformationCategories).length,num_additional_infos_categories,additionalInformation.length)
     
     return {
         credential : credential, 
